@@ -1,1 +1,1 @@
-# infraestructura_espnow
+# Nueva versión de la infraestructura IoT
