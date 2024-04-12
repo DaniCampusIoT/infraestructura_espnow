@@ -1,25 +1,38 @@
 /*
-  Daniel Carrasco
-  This and more tutorials at https://www.electrosoftcloud.com/
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp-now-esp32-arduino-ide/
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files.
+  
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
 */
+
 #include <esp_now.h>
 #include <WiFi.h>
-// Set the SLAVE MAC Address
-uint8_t slaveAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-// PMK and LMK keys
-static const char* PMK_KEY_STR = "PLEASE_CHANGE_ME";
-static const char* LMK_KEY_STR = "DONT_BE_LAZY_OK?";
-// Structure to keep the temperature and humidity data from a DHT sensor
-typedef struct temp_humidity {
-  float temperature;
-  float humidity;
-};
+
+// REPLACE WITH YOUR RECEIVER MAC Address
+uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+// Structure example to send data
+// Must match the receiver structure
+typedef struct struct_message {
+  char a[32];
+  int b;
+  float c;
+  bool d;
+} struct_message;
+
 // Create a struct_message called myData
-temp_humidity dhtData;
-// Callback to have a track of sent messages
-void OnSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("\r\nSend message status:\t");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Sent Successfully" : "Sent Failed");
+struct_message myData;
+
+esp_now_peer_info_t peerInfo;
+
+// callback when data is sent
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("\r\nLast Packet Send Status:\t");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
  
 void setup() {
@@ -28,45 +41,44 @@ void setup() {
  
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
+
   // Init ESP-NOW
   if (esp_now_init() != ESP_OK) {
-    Serial.println("There was an error initializing ESP-NOW");
+    Serial.println("Error initializing ESP-NOW");
     return;
   }
-  // Setting the PMK key
-  esp_now_set_pmk((uint8_t *)PMK_KEY_STR);
+
+  // Once ESPNow is successfully Init, we will register for Send CB to
+  // get the status of Transmitted packet
+  esp_now_register_send_cb(OnDataSent);
   
-  // Register the slave
-  esp_now_peer_info_t slaveInfo;
-  memcpy(slaveInfo.peer_addr, slaveAddress, 6);
-  slaveInfo.channel = 0;
-  // Setting the master device LMK key
-  for (uint8_t i = 0; i < 16; i++) {
-    slaveInfo.lmk[i] = LMK_KEY_STR[i];
-  }
-  slaveInfo.encrypt = true;
+  // Register peer
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;  
+  peerInfo.encrypt = false;
   
-  // Add slave        
-  if (esp_now_add_peer(&slaveInfo) != ESP_OK){
-    Serial.println("There was an error registering the slave");
+  // Add peer        
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer");
     return;
   }
-  // We will register the callback function to respond to the event
-  esp_now_register_send_cb(OnSent);
 }
+ 
 void loop() {
   // Set values to send
-  // To simplify the code, we will just set two floats and I'll send it 
-  dhtData.temperature = 12.5;
-  dhtData.humidity = 58.9;
-  // Is time to send the messsage via ESP-NOW
-  esp_err_t result = esp_now_send(slaveAddress, (uint8_t *) &dhtData, sizeof(dhtData));
+  strcpy(myData.a, "THIS IS A CHAR");
+  myData.b = random(1,20);
+  myData.c = 1.2;
+  myData.d = false;
+  
+  // Send message via ESP-NOW
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
    
   if (result == ESP_OK) {
-    Serial.println("The message was sent sucessfully.");
+    Serial.println("Sent with success");
   }
   else {
-    Serial.println("There was an error sending the message.");
+    Serial.println("Error sending the data");
   }
   delay(2000);
 }
