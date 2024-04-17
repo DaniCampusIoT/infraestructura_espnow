@@ -840,7 +840,7 @@ public:
       ESP_LOGI(TAG3, "espnow_channel: %d", peer.channel);
       // Ver esta web: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/wireshark-user-guide.html
       // Ver esta web: https://www.instructables.com/ESPNow-a-Deeper-Look-Unicast-Vs-Broadcast-ACKs-Ret/
-      esp_now_send(s_example_broadcast_mac, (uint8_t *)&mensaje_esp, sizeof(mensaje_esp));
+      esp_now_send(peer.peer_addr, (uint8_t *)&mensaje_esp, sizeof(mensaje_esp));
       if (debug)
         ESP_LOGI(TAG3, "ESPERANDO RESULTADO ENVIO");
       if (xQueueReceive(cola_resultado_enviados, &resultado, 200 / portTICK_PERIOD_MS) == pdFALSE) {
