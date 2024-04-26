@@ -177,11 +177,11 @@ public:
   Serial.println(WiFi.localIP());
   Serial.print("Wi-Fi Channel: ");
   Serial.println(myChannel);
-  Serial.printf("Identificador placa: %s\n", ID_PLACA );
+  Serial.printf("Identificador placa: %s\n", ID_PLACA.c_str() );
 
   initESP_NOW();
   
-  xTaskCreate(runGW, "GW Task", 1024, NULL, 1, NULL);
+  xTaskCreate(runGW, "GW Task", 1024*4, NULL, 1, NULL);
   
  }
 
@@ -619,7 +619,7 @@ void conecta_mqtt() {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
     if (mqtt_client.connect(ID_PLACA.c_str(), mqtt_user.c_str(), mqtt_pass.c_str())) {
-      Serial.printf(" conectado a broker: %s\n",mqtt_server);
+      Serial.printf("\n  conectado a broker: %s\n",mqtt_server);
       mqtt_client.subscribe("infind/espnowdevice");
     } else {
       Serial.printf("failed, rc=%d  try again in 5s\n", mqtt_client.state());
