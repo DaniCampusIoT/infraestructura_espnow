@@ -164,7 +164,7 @@ public:
  {
   Serial.flush(); 
   Serial.begin(115200);
-  Serial.println("GW begin...")
+  Serial.println("GW begin...");
   ID_PLACA="GW_"+ String(ESP.getEfuseMac());
   Serial.printf("Identificador placa: %s\n", ID_PLACA.c_str() );
   conecta_wifi();
@@ -186,7 +186,7 @@ public:
   initESP_NOW();
   
   xTaskCreate(runGW, "GW Task", 1024*4, NULL, 1, NULL);
-  Serial.println("GW Task thread running...")
+  Serial.println("GW Task thread running...");
 
  }
 
