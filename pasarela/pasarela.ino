@@ -4,9 +4,12 @@ espnow_gateway_t GW;
 
 void setup()
 {
- GW.set_wifi("infind","1518wifi");
- GW.set_mqtt("iot.ac.uma.es","infind","zancudo");
- GW.begin();
+  // Initialize Serial Monitor
+	Serial.begin(115200);
+  Serial.println();
+  GW.set_wifi("infind","1518wifi");
+  GW.set_mqtt("iot.ac.uma.es","infind","zancudo");
+  GW.begin();
 }
 
 void loop()

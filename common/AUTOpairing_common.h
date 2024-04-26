@@ -13,7 +13,8 @@
 #define PAN_OFFSET 2
 
 // message flags
-#define CHECK   0b10000000
+#define CHECK    0b10000000
+#define RESERVED 0b01000000
 
 String messType2String(uint8_t type)
 {
@@ -21,7 +22,7 @@ String messType2String(uint8_t type)
   switch (type & MASK_MSG_TYPE)
   {
     case PAN_DATA :
-    text = " DATOS PAN";
+    text = " DATOS_PAN";
     break;
     case DATA :
     text = " DATOS";
@@ -58,6 +59,16 @@ struct struct_espnow {      // esp-now message structure
     uint8_t msgType;
     uint8_t payload[249];
 };
+
+// Para los mensajes PAN necesitamos también la MAC de origen uint8_t[6] y la edad del mensaje (uint32_t)
+// Van a estar así:
+//      tipo de mensaje (1byte)  |  MAC origen (6 bytes) | antiguedad ms (4 bytes) | cuerpo del mensaje (hasta completar 250 bytes) 
+#define PAN_type_offset  0
+#define PAN_MAC_offset   1
+#define PAN_MAC_size     6
+#define PAN_MSold_offset 7 //(1+6)
+#define PAN_MSold_size   4
+#define PAN_payload_offset 11 //(1+6+4)
 
 //-----------------------------------------------------
 // devuelve 2 caracteres HEX para un byte
