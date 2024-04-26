@@ -162,7 +162,11 @@ public:
 
  void begin()
  {
+  Serial.flush(); 
+  Serial.begin(115200);
+  Serial.println("GW begin...")
   ID_PLACA="GW_"+ String(ESP.getEfuseMac());
+  Serial.printf("Identificador placa: %s\n", ID_PLACA.c_str() );
   conecta_wifi();
   mqtt_client.setServer(mqtt_server.c_str(), mqtt_port);
   mqtt_client.setBufferSize(mqtt_packet_size); // para poder enviar mensajes de hasta X bytes
@@ -177,12 +181,13 @@ public:
   Serial.println(WiFi.localIP());
   Serial.print("Wi-Fi Channel: ");
   Serial.println(myChannel);
-  Serial.printf("Identificador placa: %s\n", ID_PLACA.c_str() );
+  
 
   initESP_NOW();
   
   xTaskCreate(runGW, "GW Task", 1024*4, NULL, 1, NULL);
-  
+  Serial.println("GW Task thread running...")
+
  }
 
 
