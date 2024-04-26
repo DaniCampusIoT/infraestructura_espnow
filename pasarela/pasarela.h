@@ -109,6 +109,8 @@ class espnow_gateway_t
  String mqtt_server;
  String mqtt_user;
  String mqtt_pass;
+ String topic_pub;
+ String topic_sub;
  int mqtt_port;
  int mqtt_packet_size;
  esp_now_peer_info_t slave;
@@ -155,7 +157,13 @@ public:
   wifi_password= passwd;
  }
 
+//------------------------------------------------------------
 
+ void set_topics(String sub, String pub)
+ {
+  topic_sub = sub;
+  topic_pub = pub;
+ }
 
 //------------------------------------------------------------
 //------------------------------------------------------------
@@ -181,7 +189,8 @@ public:
   Serial.println(WiFi.localIP());
   Serial.print("Wi-Fi Channel: ");
   Serial.println(myChannel);
-  
+  Serial.println("Topic sub: "+topic_sub);
+  Serial.println("Topic pub: "+topic_pub+"/#");
 
   initESP_NOW();
   
@@ -571,7 +580,7 @@ void _runGW(void *pvParameters) {
           // Deserialize the JSON document
           DeserializationError error = deserializeJson(doc, JSON_serie, len);
 
-          sprintf(topic_PUB, "infind/espnow/%s", deviceMac.c_str());
+          sprintf(topic_PUB, "%s/%s", topic_pub.c_str(), deviceMac.c_str());
 
           // Compruebo si no hubo error
           if (error) {
@@ -585,7 +594,7 @@ void _runGW(void *pvParameters) {
           String valor = doc["topic"];
           Serial.print("Mensaje OK, topic = ");
           Serial.println(valor);
-          sprintf(topic_PUB, "infind/espnow/%s/%s", deviceMac.c_str(), valor.c_str() );
+          sprintf(topic_PUB, "%s/%s/%s", topic_pub.c_str(), deviceMac.c_str(), valor.c_str() );
           }
           else // no existe el campo topic
           {
@@ -625,7 +634,7 @@ void conecta_mqtt() {
     // Attempt to connect
     if (mqtt_client.connect(ID_PLACA.c_str(), mqtt_user.c_str(), mqtt_pass.c_str())) {
       Serial.printf("\n  conectado a broker: %s\n",mqtt_server);
-      mqtt_client.subscribe("infind/espnowdevice");
+      mqtt_client.subscribe(topic_sub.c_str());
     } else {
       Serial.printf("failed, rc=%d  try again in 5s\n", mqtt_client.state());
       // Wait 5 seconds before retrying
