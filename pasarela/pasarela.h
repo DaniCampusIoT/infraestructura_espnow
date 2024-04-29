@@ -101,11 +101,15 @@ std::queue<String> pairMACs;
 std::list<String> pairedMACs;
 
 
+//--------------------------------------------------------
+//    CLASE PASaRELA
+//--------------------------------------------------------
+
 class espnow_gateway_t
 {
-
-
- static espnow_gateway_t *este_objeto;
+ std::function<void(char* , byte* , unsigned int )> procesa_mensaje;
+ std::function<void(void * )> runGW_f;
+ static espnow_gateway_t *este_objeto; // old trick to use member function as callback in library
  String mqtt_server;
  String mqtt_user;
  String mqtt_pass;
@@ -131,10 +135,17 @@ String deviceMac;
 
 
 public:
+ 
+ // inicialización del objeto GW
  espnow_gateway_t()
  {
 
   este_objeto=this;
+    
+  procesa_mensaje = [=](char* topic, byte* payload, unsigned int length) 
+   {
+    this->_procesa_mensaje(topic, payload, length); 
+   };
 
  }
 
@@ -178,6 +189,8 @@ public:
   conecta_wifi();
   mqtt_client.setServer(mqtt_server.c_str(), mqtt_port);
   mqtt_client.setBufferSize(mqtt_packet_size); // para poder enviar mensajes de hasta X bytes
+
+
   mqtt_client.setCallback(procesa_mensaje);
   myChannel = WiFi.channel();
   Serial.print("Server MAC Address:  ");
@@ -193,7 +206,12 @@ public:
   Serial.println("Topic pub: "+topic_pub+"/#");
 
   initESP_NOW();
-  
+/*
+ std::function<void(void * )> runGW = [=](void *pvParameters) 
+   {
+    this->_runGW(pvParameters); 
+   };
+*/
   xTaskCreate(runGW, "GW Task", 1024*4, NULL, 1, NULL);
   Serial.println("GW Task thread running...");
 
@@ -205,18 +223,19 @@ public:
 
 private:
 
-
+/*
 static void procesa_mensaje(char* topic, byte* payload, unsigned int length)
 {
   este_objeto->_procesa_mensaje(topic, payload, length);
 }
+*/
 //-----------------------------------------------------
 //RECIBIR MQTT
 void _procesa_mensaje(char* topic, byte* payload, unsigned int length) { 
   String mensaje=String(std::string((char*) payload,length).c_str());
   Serial.println("Mensaje recibido ["+ String(topic) +"] "+ mensaje);//LEVEL CON LO DE PROCESS
   // compruebo el topic
-  if(String(topic) == "infind/espnowdevice")
+  if(String(topic) == topic_sub)
   {
     StaticJsonDocument<512> json; // el tamaño tiene que ser adecuado para el mensaje
     // Deserialize the JSON document
@@ -300,6 +319,7 @@ bool addPeer(const uint8_t *peer_addr) {      // add pairing
 } 
 
 
+
 static void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t sendStatus) {
   este_objeto->_OnDataSent(mac_addr,sendStatus);
 }
@@ -307,6 +327,7 @@ static void OnDataRecv(const uint8_t * mac, const uint8_t *incommingData, int le
 {
   este_objeto->_OnDataRecv(mac,incommingData,len);
 }
+
 //------------------------------------------------------------
 // callback when data is sent
 void _OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -405,6 +426,16 @@ void initESP_NOW(){
       Serial.println("Error initializing ESP-NOW");
       return;
     }
+/*
+  std::function<void(const uint8_t *, esp_now_send_status_t  )> OnDataSent = [=](const uint8_t *mac_addr, esp_now_send_status_t sendStatus) 
+   {
+    this->_OnDataSent(mac_addr,sendStatus); 
+   };
+  std::function<void(const uint8_t * , const uint8_t *, int   )> OnDataRecv = [=](const uint8_t * mac, const uint8_t *incommingData, int len) 
+   {
+    this->_OnDataRecv(mac,incommingData,len); 
+   };
+*/
     esp_now_register_send_cb(OnDataSent);
     esp_now_register_recv_cb(OnDataRecv);
 } 
@@ -443,6 +474,7 @@ std::list<TmensajePAN>::iterator encuentra_mensajePAN(uint8_t pan, String mac)
 
 //------------------------------------------------------------
 //------------------------------------------------------------
+
 static void runGW(void *pvParameters)
 {
   este_objeto->_runGW(pvParameters);
@@ -650,4 +682,4 @@ void conecta_mqtt() {
 //-----------------------------------------------------------
 
 // statics:
- espnow_gateway_t *espnow_gateway_t::este_objeto=NULL;
+espnow_gateway_t *espnow_gateway_t::este_objeto=NULL;
