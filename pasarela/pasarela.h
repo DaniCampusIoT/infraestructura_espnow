@@ -9,96 +9,6 @@
 
 #include "AUTOpairing_common.h"
 
-WiFiClient wClient;
-PubSubClient mqtt_client(wClient);
-
-
-//-------------------------------------------------------------
-// clase para manejar un mensaje esp-now
-class TmensajeESP
-{
-  public:
-  uint8_t mac[6];
-  uint8_t data[250];
-  uint8_t len;
-  TmensajeESP ( uint8_t *_mac, uint8_t *_data, uint8_t _len)
-   { 
-    memcpy(mac,_mac,6);
-    if(_len>250) _len=250;
-    memcpy(data,_data,_len);
-    len=_len;
-   }
-};
-
-//-------------------------------------------------------------
-// clase para manejar un mensaje MQTT
-class TmensajeMQTT
-{
-  public:
-  uint8_t mac[6];
-  uint8_t data[250];
-  uint8_t len;
-  TmensajeMQTT ( uint8_t *_mac, uint8_t *_data, uint8_t _len)
-   { 
-    memcpy(mac,_mac,6);
-    if(_len>250) _len=250;
-    memcpy(data,_data,_len);
-    len=_len;
-   }
-};
-
-//-------------------------------------------------------------
-// clase para manejar un mensaje PAN
-class TmensajePAN
-{
-  public:
-  uint8_t mac[6];
-  uint8_t pan;
-  unsigned long time;
-  std::list<String> sent_macs;
-  uint8_t data[250];
-  uint8_t len;
-  TmensajePAN ( uint8_t *_mac, uint8_t *_data, uint8_t _len,  uint8_t _pan)
-   { 
-    memcpy(mac,_mac,6);
-    if(_len>250) _len=250;
-    memcpy(data,_data,_len);
-    sent_macs.push_back(byte2HEX(_mac)); // para no enviar a si mismo
-    len=_len;
-    pan=_pan;
-    time=millis();
-    //Serial.print("PAN len: "); Serial.println(len);
-   }
-};
-
-//-------------------------------------------------------------
-// clase para manejar un dispositivo que espera sus mensajes PAN
-class TmacPAN
-{
-  public:
-  String mac;
-  uint8_t pan;
-  TmacPAN ( String _mac, uint8_t _pan)
-   { 
-    mac=_mac;
-    pan=_pan;
-   }
-};
-
-
-// cola de mensajes esp-now recibidos
-std::queue<TmensajeESP> cola_mensajes;
-// cola de mensajes esp-now recibidos
-std::list<TmensajeMQTT> mensajes_MQTT;
-
-std::list<TmensajePAN> mensajes_PAN;
-
-// cola de dispositivos (mac) esperando por sus mensajes
-std::queue<String> readyMACs;
-std::queue<TmacPAN> readyMACsPAN;
-
-std::queue<String> pairMACs;
-std::list<String> pairedMACs;
 
 
 //--------------------------------------------------------
@@ -107,36 +17,128 @@ std::list<String> pairedMACs;
 
 class espnow_gateway_t
 {
- std::function<void(char* , byte* , unsigned int )> procesa_mensaje;
 
- // Para usar una función miembro como callback tenemos que usar una función wrapper
- // usaremos una función static, pero tenemos que usar también un objeto static (o global) para 
- // almacenar el objeto que se usará en el wrapper para llamar a la función miembro.
- // https://isocpp.org/wiki/faq/pointers-to-members#fnptr-vs-memfnptr-types
- static espnow_gateway_t *responsable_espnow; // trick to use member function as callback in library
+  WiFiClient wClient;
+  PubSubClient mqtt_client;
+  
+  //-------------------------------------------------------------
+  // clase para manejar un mensaje esp-now
+  class TmensajeESP
+  {
+    public:
+    uint8_t mac[6];
+    uint8_t data[250];
+    uint8_t len;
+    TmensajeESP ( uint8_t *_mac, uint8_t *_data, uint8_t _len)
+    { 
+      memcpy(mac,_mac,6);
+      if(_len>250) _len=250;
+      memcpy(data,_data,_len);
+      len=_len;
+    }
+  };
+
+  //-------------------------------------------------------------
+  // clase para manejar un mensaje MQTT
+  class TmensajeMQTT
+  {
+    public:
+    uint8_t mac[6];
+    uint8_t data[250];
+    uint8_t len;
+    TmensajeMQTT ( uint8_t *_mac, uint8_t *_data, uint8_t _len)
+    { 
+      memcpy(mac,_mac,6);
+      if(_len>250) _len=250;
+      memcpy(data,_data,_len);
+      len=_len;
+    }
+  };
+
+  //-------------------------------------------------------------
+  // clase para manejar un mensaje PAN
+  class TmensajePAN
+  {
+    public:
+    uint8_t mac[6];
+    uint8_t pan;
+    unsigned long time;
+    std::list<String> sent_macs;
+    uint8_t data[250];
+    uint8_t len;
+    TmensajePAN ( uint8_t *_mac, uint8_t *_data, uint8_t _len,  uint8_t _pan)
+    { 
+      memcpy(mac,_mac,6);
+      if(_len>250) _len=250;
+      memcpy(data,_data,_len);
+      sent_macs.push_back(byte2HEX(_mac)); // para no enviar a si mismo
+      len=_len;
+      pan=_pan;
+      time=millis();
+      //Serial.print("PAN len: "); Serial.println(len);
+    }
+  };
+
+  //-------------------------------------------------------------
+  // clase para manejar un dispositivo que espera sus mensajes PAN
+  class TmacPAN
+  {
+    public:
+    String mac;
+    uint8_t pan;
+    TmacPAN ( String _mac, uint8_t _pan)
+    { 
+      mac=_mac;
+      pan=_pan;
+    }
+  };
+
+  // cola de mensajes esp-now recibidos
+  std::queue<TmensajeESP> cola_mensajes;
+  // cola de mensajes esp-now recibidos
+  std::list<TmensajeMQTT> mensajes_MQTT;
+
+  std::list<TmensajePAN> mensajes_PAN;
+
+  // cola de dispositivos (mac) esperando por sus mensajes
+  std::queue<String> readyMACs;
+  std::queue<TmacPAN> readyMACsPAN;
+
+  std::queue<String> pairMACs;
+  std::list<String> pairedMACs;
+
+
+  // callback MQTT
+  std::function<void(char* , byte* , unsigned int )> procesa_mensaje;
+
+  // Para usar una función miembro como callback tenemos que usar una función wrapper
+  // usaremos una función static, pero tenemos que usar también un objeto static (o global) para 
+  // almacenar el objeto que se usará en el wrapper para llamar a la función miembro.
+  // https://isocpp.org/wiki/faq/pointers-to-members#fnptr-vs-memfnptr-types
+  static espnow_gateway_t *responsable_espnow; // trick to use member function as callback in library
  
- String mqtt_server;
- String mqtt_user;
- String mqtt_pass;
- String topic_pub;
- String topic_sub;
- int mqtt_port;
- int mqtt_packet_size;
- esp_now_peer_info_t slave;
- int myChannel; 
- 
- String ID_PLACA;
+  String mqtt_server;
+  String mqtt_user;
+  String mqtt_pass;
+  String topic_pub;
+  String topic_sub;
+  int mqtt_port;
+  int mqtt_packet_size;
+  esp_now_peer_info_t slave;
+  int myChannel; 
+  
+  String ID_PLACA;
 
-// Replace with your network credentials (STATION)
- String wifi_ssid;
- String wifi_password;
+  // Replace with your network credentials (STATION)
+  String wifi_ssid;
+  String wifi_password;
 
- // cadenas para topics e ID
-char topic_PUB[256];
-char mensaje_mqtt[512];
-char JSON_serie[257];  // 6 bytes de la MAC + 1 byte del tamaño del mensaje esp-now + 250 bytes para el mensaje = 257
-char JSON_serie_bak[257];
-String deviceMac;
+  // cadenas para topics e ID
+  char topic_PUB[256];
+  char mensaje_mqtt[512];
+  char JSON_serie[257];  // 6 bytes de la MAC + 1 byte del tamaño del mensaje esp-now + 250 bytes para el mensaje = 257
+  char JSON_serie_bak[257];
+  String deviceMac;
 
 
 public:
@@ -144,16 +146,13 @@ public:
  // inicialización del objeto GW
  espnow_gateway_t()
  {
-
+  mqtt_client.setClient(wClient);
   responsable_espnow=this;
-    
   procesa_mensaje = [=](char* topic, byte* payload, unsigned int length) 
    {
     this->_procesa_mensaje(topic, payload, length); 
    };
-
  }
-
 
 //------------------------------------------------------------
 

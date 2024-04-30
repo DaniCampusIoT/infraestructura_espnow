@@ -8,6 +8,7 @@ void setup()
 	Serial.begin(115200);
   Serial.println();
   Serial.println("Arranca ESPNOW GateWay");
+  
   GW.set_wifi("infind","1518wifi");
   GW.set_mqtt("iot.ac.uma.es","infind","zancudo");
   GW.set_topics("infind/GWsub","infind/GWpub");
