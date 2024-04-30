@@ -1,3 +1,6 @@
+#ifndef Pasarela_h
+#define Pasarela_h
+
 #include <esp_now.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -9,10 +12,8 @@
 
 #include "AUTOpairing_common.h"
 
-
-
 //--------------------------------------------------------
-//    CLASE PASaRELA
+//    CLASE PASARELA
 //--------------------------------------------------------
 
 class espnow_gateway_t
@@ -20,7 +21,16 @@ class espnow_gateway_t
 
   WiFiClient wClient;
   PubSubClient mqtt_client;
-  
+
+  // callback MQTT
+  std::function<void(char* , byte* , unsigned int )> procesa_mensaje;
+
+  // Para usar una función miembro como callback tenemos que usar una función wrapper
+  // usaremos una función static, pero tenemos que usar también un objeto static (o global) para 
+  // almacenar el objeto que se usará en el wrapper para llamar a la función miembro.
+  // https://isocpp.org/wiki/faq/pointers-to-members#fnptr-vs-memfnptr-types
+  static espnow_gateway_t *responsable_espnow; // trick to use member function as callback in library
+ 
   //-------------------------------------------------------------
   // clase para manejar un mensaje esp-now
   class TmensajeESP
@@ -97,7 +107,6 @@ class espnow_gateway_t
   std::queue<TmensajeESP> cola_mensajes;
   // cola de mensajes esp-now recibidos
   std::list<TmensajeMQTT> mensajes_MQTT;
-
   std::list<TmensajePAN> mensajes_PAN;
 
   // cola de dispositivos (mac) esperando por sus mensajes
@@ -107,16 +116,7 @@ class espnow_gateway_t
   std::queue<String> pairMACs;
   std::list<String> pairedMACs;
 
-
-  // callback MQTT
-  std::function<void(char* , byte* , unsigned int )> procesa_mensaje;
-
-  // Para usar una función miembro como callback tenemos que usar una función wrapper
-  // usaremos una función static, pero tenemos que usar también un objeto static (o global) para 
-  // almacenar el objeto que se usará en el wrapper para llamar a la función miembro.
-  // https://isocpp.org/wiki/faq/pointers-to-members#fnptr-vs-memfnptr-types
-  static espnow_gateway_t *responsable_espnow; // trick to use member function as callback in library
- 
+//**************************************
   String mqtt_server;
   String mqtt_user;
   String mqtt_pass;
@@ -143,16 +143,16 @@ class espnow_gateway_t
 
 public:
  
- // inicialización del objeto GW
- espnow_gateway_t()
- {
-  mqtt_client.setClient(wClient);
-  responsable_espnow=this;
-  procesa_mensaje = [=](char* topic, byte* payload, unsigned int length) 
-   {
-    this->_procesa_mensaje(topic, payload, length); 
-   };
- }
+  // inicialización del objeto GW
+  espnow_gateway_t()
+  {
+    mqtt_client.setClient(wClient);
+    responsable_espnow=this;
+    procesa_mensaje = [=](char* topic, byte* payload, unsigned int length) 
+    {
+      this->_procesa_mensaje(topic, payload, length); 
+    };
+  }
 
 //------------------------------------------------------------
 
@@ -216,8 +216,7 @@ public:
     this->_runGW(pvParameters); 
    };
 */
-
-  xTaskCreate(this->runGW, "GW Task", 1024*4, this/*param*/, 1, NULL);
+  xTaskCreate(this->runGW, "GW Task", 1024*4, this, 1, NULL);
   Serial.println("GW Task thread running...");
 
  }
@@ -674,3 +673,5 @@ void conecta_mqtt() {
 
 // statics:
 espnow_gateway_t *espnow_gateway_t::responsable_espnow=NULL;
+
+#endif
