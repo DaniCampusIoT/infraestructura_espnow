@@ -108,8 +108,13 @@ std::list<String> pairedMACs;
 class espnow_gateway_t
 {
  std::function<void(char* , byte* , unsigned int )> procesa_mensaje;
- std::function<void(void * )> runGW_f;
- static espnow_gateway_t *este_objeto; // old trick to use member function as callback in library
+
+ // Para usar una función miembro como callback tenemos que usar una función wrapper
+ // usaremos una función static, pero tenemos que usar también un objeto static (o global) para 
+ // almacenar el objeto que se usará en el wrapper para llamar a la función miembro.
+ // https://isocpp.org/wiki/faq/pointers-to-members#fnptr-vs-memfnptr-types
+ static espnow_gateway_t *responsable_espnow; // trick to use member function as callback in library
+ 
  String mqtt_server;
  String mqtt_user;
  String mqtt_pass;
@@ -140,7 +145,7 @@ public:
  espnow_gateway_t()
  {
 
-  este_objeto=this;
+  responsable_espnow=this;
     
   procesa_mensaje = [=](char* topic, byte* payload, unsigned int length) 
    {
@@ -224,12 +229,6 @@ public:
 
 private:
 
-/*
-static void procesa_mensaje(char* topic, byte* payload, unsigned int length)
-{
-  este_objeto->_procesa_mensaje(topic, payload, length);
-}
-*/
 //-----------------------------------------------------
 //RECIBIR MQTT
 void _procesa_mensaje(char* topic, byte* payload, unsigned int length) { 
@@ -322,11 +321,11 @@ bool addPeer(const uint8_t *peer_addr) {      // add pairing
 
 
 static void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t sendStatus) {
-  este_objeto->_OnDataSent(mac_addr,sendStatus);
+  responsable_espnow->_OnDataSent(mac_addr,sendStatus);
 }
 static void OnDataRecv(const uint8_t * mac, const uint8_t *incommingData, int len)
 {
-  este_objeto->_OnDataRecv(mac,incommingData,len);
+  responsable_espnow->_OnDataRecv(mac,incommingData,len);
 }
 
 //------------------------------------------------------------
@@ -427,16 +426,7 @@ void initESP_NOW(){
       Serial.println("Error initializing ESP-NOW");
       return;
     }
-/*
-  std::function<void(const uint8_t *, esp_now_send_status_t  )> OnDataSent = [=](const uint8_t *mac_addr, esp_now_send_status_t sendStatus) 
-   {
-    this->_OnDataSent(mac_addr,sendStatus); 
-   };
-  std::function<void(const uint8_t * , const uint8_t *, int   )> OnDataRecv = [=](const uint8_t * mac, const uint8_t *incommingData, int len) 
-   {
-    this->_OnDataRecv(mac,incommingData,len); 
-   };
-*/
+
     esp_now_register_send_cb(OnDataSent);
     esp_now_register_recv_cb(OnDataRecv);
 } 
@@ -684,4 +674,4 @@ void conecta_mqtt() {
 //-----------------------------------------------------------
 
 // statics:
-espnow_gateway_t *espnow_gateway_t::este_objeto=NULL;
+espnow_gateway_t *espnow_gateway_t::responsable_espnow=NULL;
