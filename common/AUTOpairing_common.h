@@ -21,7 +21,8 @@
 #define PAN_OFFSET 2
 
 // message flags
-#define CHECK   0b10000000
+
+#define CHECK    0b10000000
 #define RESERVED 0b01000000
 
 #ifndef MAX_CONFIG_SIZE
@@ -55,8 +56,9 @@ char *messType2String(uint8_t type)
   char *buffer = (char *)malloc(100);
   switch (type & MASK_MSG_TYPE)
   {
-  case PAN_DATA:
-    text = " DATOS PAN";
+
+    case PAN_DATA :
+    text = " DATOS_PAN";
     break;
   case DATA:
     text = " DATOS";
@@ -128,6 +130,16 @@ typedef struct
   esp_now_send_status_t status;
 } espnow_send_cb_t;
 
+
+// Para los mensajes PAN necesitamos también la MAC de origen uint8_t[6] y la edad del mensaje (uint32_t)
+// Van a estar así:
+//      tipo de mensaje (1byte)  |  MAC origen (6 bytes) | antiguedad ms (4 bytes) | cuerpo del mensaje (hasta completar 250 bytes) 
+#define PAN_type_offset  0
+#define PAN_MAC_offset   1
+#define PAN_MAC_size     6
+#define PAN_MSold_offset 7 //(1+6)
+#define PAN_MSold_size   4
+#define PAN_payload_offset 11 //(1+6+4)
 
 //-----------------------------------------------------
 // devuelve 2 caracteres HEX para un byte
