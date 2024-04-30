@@ -212,7 +212,8 @@ public:
     this->_runGW(pvParameters); 
    };
 */
-  xTaskCreate(runGW, "GW Task", 1024*4, NULL, 1, NULL);
+
+  xTaskCreate(this->runGW, "GW Task", 1024*4, this/*param*/, 1, NULL);
   Serial.println("GW Task thread running...");
 
  }
@@ -477,7 +478,8 @@ std::list<TmensajePAN>::iterator encuentra_mensajePAN(uint8_t pan, String mac)
 
 static void runGW(void *pvParameters)
 {
-  este_objeto->_runGW(pvParameters);
+  espnow_gateway_t *instancia = (espnow_gateway_t *) pvParameters;   
+  instancia->_runGW(pvParameters);
 }
 
 // Para que funcione el gateway
